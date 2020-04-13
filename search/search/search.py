@@ -89,15 +89,13 @@ def depthFirstSearch(problem):
     "*** YOUR CODE HERE ***"
     stack = util.Stack()
     actions = []
-    visitedPos = []
     curPos = problem.getStartState()
-
+    visitedPos = []
     stack.push((curPos, actions))
 
     while not stack.isEmpty() and not problem.isGoalState(curPos):
         curPos, actions = stack.pop()
         visitedPos.append(curPos)
-
         for s in problem.getSuccessors(curPos):
             # s = [(?, ?), 'Direction']
             if s[0] not in visitedPos:
@@ -115,10 +113,8 @@ def breadthFirstSearch(problem):
 
     queue = util.Queue()
     actions = []
-
     curPos = problem.getStartState()
     visitedPos = [curPos]
-
     queue.push((curPos, actions))
 
     while not queue.isEmpty():
@@ -127,9 +123,8 @@ def breadthFirstSearch(problem):
             return actions
         for s in problem.getSuccessors(curPos):
             if s[0] not in visitedPos:
-                newAction = s[1]
                 visitedPos.append(s[0])
-                queue.push((s[0], actions + [newAction]))
+                queue.push((s[0], actions + [s[1]]))
 
     return actions
     util.raiseNotDefined()
@@ -139,10 +134,10 @@ def uniformCostSearch(problem):
     "*** YOUR CODE HERE ***"
 
     pq = util.PriorityQueue()
+    actions = []
+    curPos = problem.getStartState()
     visitedPos = []
 
-    curPos = problem.getStartState()
-    actions = []
     cost = 0
     pq.push((curPos, actions), cost)
 
@@ -150,19 +145,16 @@ def uniformCostSearch(problem):
         curPos, actions = pq.pop()
         if problem.isGoalState(curPos):
             return actions
-
         #fringe
         if curPos not in visitedPos:
-            succ = problem.getSuccessors(curPos)
-            for s in succ:
+            for s in problem.getSuccessors(curPos):
                 if s[0] not in visitedPos:
-                    # newAction = s[1]
-                    cost = problem.getCostOfActions(actions + [s[1]])
-                    pq.push((s[0], actions + [s[1]]), cost)
+                    newActions = actions + [s[1]]
+                    cost = problem.getCostOfActions(newActions)
+                    pq.push((s[0], newActions), cost)
         visitedPos.append(curPos)
 
     return actions
-
     util.raiseNotDefined()
 
 def nullHeuristic(state, problem=None):
@@ -177,10 +169,10 @@ def aStarSearch(problem, heuristic=nullHeuristic):
     "*** YOUR CODE HERE ***"
 
     pq = util.PriorityQueue()
+    actions = []
+    curPos = problem.getStartState()
     visitedPos = []
 
-    curPos = problem.getStartState()
-    actions = []
     cost = 0
     pq.push((curPos, actions), cost)
 
@@ -188,19 +180,17 @@ def aStarSearch(problem, heuristic=nullHeuristic):
         curPos, actions = pq.pop()
         if problem.isGoalState(curPos):
             return actions
-
         #fringe
         if curPos not in visitedPos:
             for s in problem.getSuccessors(curPos):
                 if s[0] not in visitedPos:
-                    nextAction = s[1]
+                    newAction = s[1]
                     h = heuristic(s[0], problem)
-                    g = problem.getCostOfActions(actions + [nextAction])
+                    g = problem.getCostOfActions(actions + [newAction])
                     cost = g + h
-                    pq.push((s[0], actions + [nextAction]), cost)
+                    pq.push((s[0], actions + [newAction]), cost)
         visitedPos.append(curPos)
-    return actions + [nextAction]
-
+    return actions + [newAction]
     util.raiseNotDefined()
 
 
