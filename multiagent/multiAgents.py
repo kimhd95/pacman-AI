@@ -167,7 +167,47 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # def value(state):
+        #     if the state is a terminal state: return the state’s utility
+        #     if the next agent is MAX: return max-value(state)
+        #     if the next agent is MIN: return min-value(state)
+        # def max-value(state):
+        #     initialize v = -∞
+        #     for each successor of state:
+        #     v = max(v, value(successor))
+        #     return v
+        # def min-value(state):
+        #     initialize v = +∞
+        #     for each successor of state:
+        #     v = min(v, value(successor))
+        #     return v
+
+        def maxValue(gameState, depth):
+            pLegalActions = gameState.getLegalActions(0)
+            if gameState.isWin() or not pLegalActions or depth >= self.depth:
+                return self.evaluationFunction(gameState)
+            return max(minValue(gameState.generateSuccessor(0, action), depth+1, 1) for action in pLegalActions)
+
+        def minValue(gameState, depth, agentIndex):
+            gLegalActions = gameState.getLegalActions(agentIndex)
+            if gameState.isLose() or not gLegalActions:
+                return self.evaluationFunction(gameState)
+
+            numAgents = gameState.getNumAgents()
+            if agentIndex < numAgents - 1:  # Ghost
+                return min(minValue(gameState.generateSuccessor(agentIndex, action), depth, agentIndex + 1) for action in gLegalActions)
+            else:   # PACMAN
+                return min(maxValue(gameState.generateSuccessor(agentIndex, action), depth) for action in gLegalActions)
+
+        solution = max(gameState.getLegalActions(0), key=lambda action: minValue(gameState.generateSuccessor(0, action), 1, 1))
+        # print(gameState.getLegalActions(0))
+        initialPacmanActions = gameState.getLegalActions(0)
+
+
+        # :
+        #     max[minValue(gameState.generateSuccessor(0, a), 1, 1) for a in initialPacmanActions]
+        return max(initialPacmanActions, key=lambda a: minValue(gameState.generateSuccessor(0, a), 1, 1))
+
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
