@@ -4,7 +4,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -74,7 +74,39 @@ class ReflexAgent(Agent):
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
-        return successorGameState.getScore()
+        # Does the action keep safe distance with ghosts
+        curPos = currentGameState.getPacmanPosition()
+        #newPos
+        curScore = currentGameState.getScore()
+        newScore = successorGameState.getScore()
+        curGhostStates = currentGameState.getGhostStates()
+        #newGhostStates
+        curGhostDistances = [manhattanDistance(curPos, gstate.getPosition()) for gstate in curGhostStates]
+        newGhostDistances = [manhattanDistance(newPos, gstate.getPosition()) for gstate in newGhostStates]
+        #newScaredTimes
+        curFood = currentGameState.getFood()
+        #newFood
+        curFoodDistances = [manhattanDistance(curPos, foodPos) for foodPos in curFood.asList()]
+        newFoodDistances = [manhattanDistance(newPos, foodPos) for foodPos in newFood.asList()]
+
+        # criteria1 = 3*(newScore - curScore)
+        # if min(newGhostDistances) <= 1:
+        #     criteria2 = -1000
+        # else:
+        #     criteria2 = 1/min(curGhostDistances) - 1/min(newGhostDistances) if max(newScaredTimes) == 0 else  0
+        # criteria3 = 1/min(newFoodDistances) - 1/min(curFoodDistances) if newFoodDistances else 0
+
+        if min(newGhostDistances) <= 1 and min(newScaredTimes) == 0:
+            return -100
+        elif action == Directions.STOP:
+            return -1
+        elif newScore - curScore >= 0:
+            return 5
+        elif min(curFoodDistances) - min(newFoodDistances) > 0:
+            return 3
+        else:
+            return 1 + 1/min(newFoodDistances) - 1/min(curFoodDistances) if newFoodDistances else 0
+
 
 def scoreEvaluationFunction(currentGameState):
     """
