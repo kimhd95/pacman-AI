@@ -74,7 +74,6 @@ class ReflexAgent(Agent):
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
-        # Does the action keep safe distance with ghosts
         curPos = currentGameState.getPacmanPosition()
         #newPos
         curScore = currentGameState.getScore()
@@ -83,7 +82,6 @@ class ReflexAgent(Agent):
         #newGhostStates
         curGhostDistances = [manhattanDistance(curPos, gstate.getPosition()) for gstate in curGhostStates]
         newGhostDistances = [manhattanDistance(newPos, gstate.getPosition()) for gstate in newGhostStates]
-        #newScaredTimes
         curFood = currentGameState.getFood()
         #newFood
         curFoodDistances = [manhattanDistance(curPos, foodPos) for foodPos in curFood.asList()]
@@ -96,15 +94,15 @@ class ReflexAgent(Agent):
         #     criteria2 = 1/min(curGhostDistances) - 1/min(newGhostDistances) if max(newScaredTimes) == 0 else  0
         # criteria3 = 1/min(newFoodDistances) - 1/min(curFoodDistances) if newFoodDistances else 0
 
-        if min(newGhostDistances) <= 1 and min(newScaredTimes) == 0:
+        if min(newGhostDistances) <= 1 and max(newScaredTimes) == 0:    # 유령과 한칸차이이고 scared상태가 아닐때
             return -100
-        elif action == Directions.STOP:
+        elif action == Directions.STOP:     # 멈춰있는 경우
             return -1
-        elif newScore - curScore >= 0:
+        elif newScore - curScore >= 0:      # food를 먹는 경우
             return 5
-        elif min(curFoodDistances) - min(newFoodDistances) > 0:
+        elif min(curFoodDistances) - min(newFoodDistances) > 0:         # 제일 가까운 food와 근접해질때
             return 3
-        else:
+        else:                               # 그 외: food와의 거리에 따라
             return 1 + 1/min(newFoodDistances) - 1/min(curFoodDistances) if newFoodDistances else 0
 
 
@@ -167,6 +165,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
+        # Pseudo-code
         # def value(state):
         #     if the state is a terminal state: return the state’s utility
         #     if the next agent is MAX: return max-value(state)
@@ -183,36 +182,30 @@ class MinimaxAgent(MultiAgentSearchAgent):
         #     return v
 
         def maxValue(gameState, depth):
-            pLegalActions = gameState.getLegalActions(0)
-            if gameState.isWin() or not pLegalActions or depth >= self.depth:
+            legalActions = gameState.getLegalActions(0)     # 팩맨 액션
+            if gameState.isWin() or not legalActions or depth >= self.depth:    #트리 말단 노드일때 evaluationFunction 수행
                 return self.evaluationFunction(gameState)
-            return max(minValue(gameState.generateSuccessor(0, action), depth+1, 1) for action in pLegalActions)
+            return max(minValue(gameState.generateSuccessor(0, action), depth+1, 1) for action in legalActions)
 
         def minValue(gameState, depth, agentIndex):
-            gLegalActions = gameState.getLegalActions(agentIndex)
-            if gameState.isLose() or not gLegalActions:
+            legalActions = gameState.getLegalActions(agentIndex)        # 유령 액션
+            if gameState.isLose() or not legalActions:      #트리 말단
                 return self.evaluationFunction(gameState)
 
             numAgents = gameState.getNumAgents()
-            if agentIndex < numAgents - 1:  # Ghost
-                return min(minValue(gameState.generateSuccessor(agentIndex, action), depth, agentIndex + 1) for action in gLegalActions)
-            else:   # PACMAN
-                return min(maxValue(gameState.generateSuccessor(agentIndex, action), depth) for action in gLegalActions)
+            if agentIndex < numAgents - 1:  # 다음 agent가 Ghost일때 노드 확장
+                return min(minValue(gameState.generateSuccessor(agentIndex, action), depth, agentIndex + 1) for action in legalActions)
+            else:   # 다음 agent가 PACMAN일때 노드 확장
+                return min(maxValue(gameState.generateSuccessor(agentIndex, action), depth) for action in legalActions)
 
-        solution = max(gameState.getLegalActions(0), key=lambda action: minValue(gameState.generateSuccessor(0, action), 1, 1))
-        # print(gameState.getLegalActions(0))
-        initialPacmanActions = gameState.getLegalActions(0)
-
-
-        # :
-        #     max[minValue(gameState.generateSuccessor(0, a), 1, 1) for a in initialPacmanActions]
-        return max(initialPacmanActions, key=lambda a: minValue(gameState.generateSuccessor(0, a), 1, 1))
+        return max(gameState.getLegalActions(0), key=lambda a: minValue(gameState.generateSuccessor(0, a), 1, 1))
 
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
     Your minimax agent with alpha-beta pruning (question 3)
     """
+    # Pseudo-code
     # def value(state):
     #     if the state is a terminal state: return the state’s utility
     #     if the next agent is MAX: return max-value(state)
@@ -233,73 +226,47 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
     #       beta = min(beta, v)
     #     return v
 
-
-
     def getAction(self, gameState):
         """
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        # def value(gameState, alpha, beta, depth, agentIndex):
-        #     # if the state is a terminal state: return the state’s utility
-        #     print(" >> " + "a=", alpha," b=", beta, " depth=", depth, " agent=", agentIndex)
-        #
-        #     # legalActions = gameState.getLegalActions(agentIndex)
-        #     # if not legalActions:
-        #     #     return self.evaluationFunction(gameState)
-        #     # if the next agent is MAX: return max-value(state)
-        #     # numAgents = gameState.getNumAgents()
-        #     if agentIndex == 0:
-        #         return maxValue(gameState, alpha, beta, depth + 1)
-        #     # if the next agent is MIN: return min-value(state)
-        #     else:
-        #         return minValue(gameState, alpha, beta, depth, agentIndex)
-
         def maxValue(gameState, alpha, beta, depth):
             # print(" >> " + "a=", alpha," b=", beta, " depth=", depth, " agent=pacman")
-
             v = -999999
             legalActions = gameState.getLegalActions(0)
-            if not legalActions or depth == self.depth:
+            if not legalActions or depth == self.depth:     #말단 노드
                 return self.evaluationFunction(gameState)
 
-            if depth == 0:
-                bestAction = legalActions[0]
-
-            for action in legalActions:
+            for action in legalActions:     # for each successor of state
                 newStates =  gameState.generateSuccessor(0, action)
+                # successor V 계산, 비교
                 newV = minValue(newStates, alpha, beta, depth + 1, 1)
-                # v = max(v, minValue(newStates, alpha, beta, depth + 1, 1))
                 if newV > v and depth == 0:
-                    bestAction = action
+                    toAct = action
                 v = max(v, newV)
-
-                if v > beta:
+                if v > beta:        # best option인 경우 (Tree cut)
                     return v
-
                 alpha = max(alpha, v)
 
             if depth == 0:
-                return bestAction
+                return toAct if toAct else legalActions[0]
             return v
 
         def minValue(gameState, alpha, beta, depth, agentIndex):
             # print(" >> " + "a=", alpha," b=", beta, " depth=", depth, " agent=ghost", agentIndex)
-
             v = 999999
             legalActions = gameState.getLegalActions(agentIndex)
-            if not legalActions:
+            if not legalActions:        # 말단 노드
                 return self.evaluationFunction(gameState)
 
             numAgents = gameState.getNumAgents()
             for action in legalActions:
                 newStates = gameState.generateSuccessor(agentIndex, action)
                 v = min(v, maxValue(newStates, alpha, beta, depth)) if agentIndex == numAgents-1 else min(v, minValue(newStates, alpha, beta, depth, agentIndex+1))
-
-                if v < alpha:
+                if v < alpha:       # Stop expanding (Tree cut)
                     return v
                 beta = min(beta, v)
-
             return v
 
         return maxValue(gameState, -999999, 999999, 0)
