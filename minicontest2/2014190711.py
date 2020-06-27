@@ -108,22 +108,16 @@ class OffenderAgent(DummyAgent):
         myPos = gameState.getAgentPosition(self.index)
         foodList = self.getFood(gameState).asList()
         minFoodDistance = min([self.getMazeDistance(myPos, foodPos) for foodPos in foodList]) if foodList else 1000
-        enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
-        invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
 
         isOutside = self.isOutside(gameState)
 
         if not isOutside:   # 아군 진영에 있을 때
-                            # invader 있을 때 Defender 전환
-            minInvaderDistance = min([self.getMazeDistance(myPos, invader.getPosition()) for invader in invaders]) if invaders else 10
             goToDefend = len(foodList) == 0 or gameState.data.timeleft < 4*minFoodDistance + 10
-            goToDefend = goToDefend or (len(invaders) > 0 and minInvaderDistance < 8)
             if goToDefend:
             # if True:
                 self.mode = "DefendingAgent"
                 self.Agent = DefendingAgent(self.index)
                 self.Agent.registerInitialState(gameState)
-                # print("Defending")
             else:
                 self.mode = "MovingAgent"
                 self.Agent = MovingAgent(self.index)
@@ -249,7 +243,7 @@ class MovingAgent(OffenderAgent):
     return {'successorScore': 100, 'distanceToFood': -1, 'distanceToEnemy': 0.1, 'stop': 1}
 
 class OffendingAgent(OffenderAgent):
-    def buildMinimax(self, gameState, curLevel, limit, prevNode):
+    def buildExpectimax(self, gameState, curLevel, limit, prevNode):
       numOfAgents = gameState.getNumAgents()
       agentIndex = curLevel % numOfAgents
       agentPos = gameState.getAgentPosition(self.index)
@@ -269,7 +263,7 @@ class OffendingAgent(OffenderAgent):
           curNode = [0, action, 'pacman', []]       # [value, action, agent, prevNode]
           successor = gameState.generateSuccessor(agentIndex, action)
 
-          v = self.buildMinimax(successor, curLevel + 1, limit, curNode)
+          v = self.buildExpectimax(successor, curLevel + 1, limit, curNode)
           maxV = max(v, maxV)
           curNode[0] = v  # v 갱신
           # curNode['value'] = v
@@ -291,7 +285,7 @@ class OffendingAgent(OffenderAgent):
         successor = gameState.generateSuccessor(agentIndex, newAction)
         curNode = [0, newAction, 'ghost', []]
         # curNode = {'action': newAction, 'agentType': 'ghost', 'prev': []}
-        v = self.buildMinimax(successor, curLevel + 1, limit, curNode)
+        v = self.buildExpectimax(successor, curLevel + 1, limit, curNode)
 
         curNode[0] = v  # [[action, score], []]
         prevNode[3].append(curNode)
@@ -300,7 +294,7 @@ class OffendingAgent(OffenderAgent):
         return v
 
       else:
-        return self.buildMinimax(gameState, curLevel + 1, limit, prevNode)
+        return self.buildExpectimax(gameState, curLevel + 1, limit, prevNode)
 
     def getBestAction(self, gameState, rootNode, curLevel, limit):
       depth = curLevel // gameState.getNumAgents()
@@ -335,7 +329,7 @@ class OffendingAgent(OffenderAgent):
       limit = DEPTH_LIMIT
       s0 = [None, 'first', 'pacman', []]
       # tree = {'action': 'first', 'agentType': 'pacman', 'prev': []}
-      self.buildMinimax(gameState, self.index, limit, s0)
+      self.buildExpectimax(gameState, self.index, limit, s0)
       bestAction = self.getBestAction(gameState, s0, limit, 0)
       # print(bestAction)
       return bestAction
@@ -458,76 +452,19 @@ class DefenderAgent(DummyAgent):
         return border_red if gameState.isOnRedTeam(self.index) else border_blue
 
     def chooseAction(self, gameState):
-        # print(self.timeForComputing)
-        myPos = gameState.getAgentPosition(self.index)
+
         enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
         invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
-        minInvaderDistance = min([self.getMazeDistance(myPos, invader.getPosition()) for invader in invaders]) if invaders else 30
-        minOpponentDistance = min([self.getMazeDistance(myPos, e.getPosition()) for e in enemies]) if enemies else 30
-        foodList = self.getFood(gameState).asList()
-        minFoodDistance = min([self.getMazeDistance(myPos, foodPos) for foodPos in foodList]) if foodList else 1000
 
-        team = self.getTeam(gameState)
-        team.remove(self.index)
-        teammate = gameState.getAgentState(team[0])
-        minInvaderDistance_team = min([self.getMazeDistance(teammate.getPosition(), invader.getPosition()) for invader in invaders]) if invaders else 99
-
-        isOutside = self.isOutside(gameState)
-        # print(self.mode, gameState.data.timeleft)
-        if not isOutside:
-            if len(invaders) == 0:      # 순찰 모드
-                if not teammate.isPacman or minOpponentDistance > 8:
-                    self.mode = "MovingAgent"
-                    self.Agent = MovingAgent(self.index)
-                    self.Agent.registerInitialState(gameState)
-                else:
-                    self.mode = "PatrolAgent"
-                    self.Agent = PatrolAgent(self.index)
-                    self.Agent.registerInitialState(gameState)
-
-            else:
-
-                if len(invaders) == 1 and not teammate.isPacman and minInvaderDistance > 10 and minInvaderDistance_team < 8:
-                    self.mode = "MovingAgent"
-                    self.Agent = MovingAgent(self.index)
-                    self.Agent.registerInitialState(gameState)
-                else:
-                    self.mode = "ChasingAgent"
-                    self.Agent = ChasingAgent(self.index)
-                    self.Agent.registerInitialState(gameState)
+        if len(invaders) == 0:      # 순찰 모드
+            self.mode = "PatrolAgent"
+            self.Agent = PatrolAgent(self.index)
+            self.Agent.registerInitialState(gameState)
 
         else:
-            if len(invaders) > 0 and (teammate.isPacman or minInvaderDistance_team >= 8):
-                self.mode = "ReturningAgent"
-                self.Agent = ReturningAgent(self.index)
-                self.Agent.registerInitialState(gameState)
-                action = self.Agent.getAction(gameState)
-                return action
-
-            if self.mode == "MovingAgent":
-                self.mode = "OffendingAgent"
-                self.Agent = OffendingAgent(self.index)
-                self.Agent.registerInitialState(gameState)
-            elif self.mode == "OffendingAgent":
-                opponents = self.getOpponents(gameState)
-                dangerousOpponents = [o for o in opponents if self.checkDangerOfAgent(gameState, o)]    # "위험한" 적
-                minEnemyDistance = min([self.getMazeDistance(myPos, gameState.getAgentPosition(do)) for do in dangerousOpponents]) if dangerousOpponents else 10
-
-                goToReturn = gameState.data.timeleft < 4*minFoodDistance + 10 or \
-                             len(foodList) == 0 or \
-                             (gameState.getAgentState(self.index).numCarrying > 0 and \
-                             minEnemyDistance < 8)
-                if goToReturn:
-                    self.mode = "ReturningAgent"
-                    self.Agent = ReturningAgent(self.index)
-                    self.Agent.registerInitialState(gameState)
-                else:
-                    self.Agent = OffendingAgent(self.index)
-                    self.Agent.registerInitialState(gameState)
-            elif self.mode == "ReturningAgent":
-                self.Agent = ReturningAgent(self.index)
-                self.Agent.registerInitialState(gameState)
-
+            self.mode = "ChasingAgent"
+            self.Agent = ChasingAgent(self.index)
+            self.Agent.registerInitialState(gameState)
 
         action = self.Agent.getAction(gameState)
         return action
@@ -626,213 +563,3 @@ class ChasingAgent(DefenderAgent):
 
     def getWeights(self, gameState, action):
         return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2}
-
-
-class MovingAgent(DefenderAgent):
-  def getAction(self, gameState):
-    actions = gameState.getLegalActions(self.index)
-    values = [self.evaluate(gameState, a) for a in actions]
-    maxValue = max(values)
-    bestActions = [a for a, v in zip(actions, values) if v == maxValue]
-    foodLeft = len(self.getFood(gameState).asList())
-    if foodLeft <= 2:
-      bestDist = 9999
-      for action in actions:
-        successor = self.getSuccessor(gameState, action)
-        pos2 = successor.getAgentPosition(self.index)
-        dist = self.getMazeDistance(self.start,pos2)
-        if dist < bestDist:
-          bestAction = action
-          bestDist = dist
-      return bestAction
-    return random.choice(bestActions)
-
-  def getFeatures(self, gameState, action):
-    features = util.Counter()
-    successor = self.getSuccessor(gameState, action)
-    foodList = self.getFood(successor).asList()
-    features['successorScore'] = -len(foodList)#self.getScore(successor)
-    if len(foodList) > 0: # This should always be True,  but better safe than sorry
-      myPos = successor.getAgentState(self.index).getPosition()
-      minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
-      features['distanceToFood'] = minDistance
-    opponents = self.getOpponents(gameState)
-    dangerousOpponents = [o for o in opponents if self.checkDangerOfAgent(successor, o)]    # "위험한" 적
-    minEnemyDistance = min([self.getMazeDistance(myPos, successor.getAgentPosition(do)) for do in dangerousOpponents]) if dangerousOpponents else 10
-    features['distanceToEnemy'] = minEnemyDistance if minEnemyDistance > 1 else -100
-    features['stop'] = -10 if action == Directions.STOP else 0  # 멈춤 방지
-    return features
-
-  def getWeights(self, gameState, action):
-    return {'successorScore': 100, 'distanceToFood': -1, 'distanceToEnemy': 0.1, 'stop': 1}
-
-class OffendingAgent(DefenderAgent):
-    def buildMinimax(self, gameState, curLevel, limit, prevNode):
-      numOfAgents = gameState.getNumAgents()
-      agentIndex = curLevel % numOfAgents
-      agentPos = gameState.getAgentPosition(self.index)
-      depth = curLevel // numOfAgents + 1
-      legalActions = gameState.getLegalActions(agentIndex)
-
-      if agentIndex == self.index and gameState.isOver() or depth > limit or agentPos==gameState.getInitialAgentPosition(self.index):
-          if curLevel >= numOfAgents:
-              return self.getFeatures(gameState, 0) * self.getWeights(gameState, 0)
-
-
-      if agentIndex == self.index:  # myAgent
-        maxV = -math.inf
-
-        for action in legalActions:
-          # curNode = {'action': action, 'agentType': 'pacman', 'prev': []}
-          curNode = [0, action, 'pacman', []]       # [value, action, agent, prevNode]
-          successor = gameState.generateSuccessor(agentIndex, action)
-
-          v = self.buildMinimax(successor, curLevel + 1, limit, curNode)
-          maxV = max(v, maxV)
-          curNode[0] = v  # v 갱신
-          # curNode['value'] = v
-          # curNode['prev'].append(curNode)
-          prevNode[3].append(curNode)   # 트리 branch에 현재노드 추가
-        return maxV
-
-      elif self.checkDangerOfAgent(gameState, agentIndex):  # 위험한 적군인 경우
-        myPos = gameState.getAgentPosition(self.index)
-        nextStates = []     # {[[pos, action]...]}
-
-        for action in legalActions:
-          successor = gameState.generateSuccessor(agentIndex, action)
-          nextStates.append([successor.getAgentPosition(agentIndex), action])
-
-        distances = [self.getMazeDistance(myPos, s[0]) for s in nextStates]
-        minDistanceToEnemy = min(distances)
-        newAction = nextStates[distances.index(minDistanceToEnemy)][1]
-        successor = gameState.generateSuccessor(agentIndex, newAction)
-        curNode = [0, newAction, 'ghost', []]
-        # curNode = {'action': newAction, 'agentType': 'ghost', 'prev': []}
-        v = self.buildMinimax(successor, curLevel + 1, limit, curNode)
-
-        curNode[0] = v  # [[action, score], []]
-        prevNode[3].append(curNode)
-        # curNode['value'] = v
-        # curNode['prev'].append(curNode)
-        return v
-
-      else:
-        return self.buildMinimax(gameState, curLevel + 1, limit, prevNode)
-
-    def getBestAction(self, gameState, rootNode, curLevel, limit):
-      depth = curLevel // gameState.getNumAgents()
-      if not rootNode[3] or depth > limit:
-      # if not rootNode['prev'] or depth > limit:
-        return
-      if rootNode[2] == 'pacman':
-      # if rootNode['agentType'] == 'pacman':
-        maxScore = -math.inf
-        for i in range(len(rootNode[3])):
-        # for i in range(len(rootNode['prev'])):
-          # if rootNode[3][i][0] > maxScore:
-          prev_i = rootNode[3][i]
-          if prev_i[0] > maxScore:
-            maxScore = prev_i[0]
-            action = prev_i[1]
-            childIndex = i
-        return action
-      elif rootNode['agentType'] == 'ghost':
-        childIndex = 0
-
-      self.getBestAction(gameState, rootNode[3][childIndex], curLevel+1, limit)
-
-
-
-    def getAction(self, gameState):
-      """
-      Returns the minimax action using self.depth and self.evaluationFunction
-      """
-      "*** YOUR CODE HERE ***"
-      myPos = gameState.getAgentPosition(self.index)
-      limit = DEPTH_LIMIT
-      s0 = [None, 'first', 'pacman', []]
-      # tree = {'action': 'first', 'agentType': 'pacman', 'prev': []}
-      self.buildMinimax(gameState, self.index, limit, s0)
-      bestAction = self.getBestAction(gameState, s0, limit, 0)
-      # print(bestAction)
-      return bestAction
-
-    def getFeatures(self, gameState, action):
-      features = util.Counter()
-      foodList = self.getFood(gameState).asList()
-      # 캡슐도 food로 취급
-      capsulesList = self.getCapsules(gameState)
-      for c in capsulesList:
-          foodList.append(c)
-
-      features['successorScore'] = -len(foodList)
-      if len(foodList) == 0:
-          return features
-
-      myPos = gameState.getAgentState(self.index).getPosition()
-      minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
-      features['distanceToFood'] = -minDistance
-
-      opponents = self.getOpponents(gameState)
-      dangerousOpponents = [o for o in opponents if self.checkDangerOfAgent(gameState, o)]    # "위험한" 적
-      minEnemyDistance = min([self.getMazeDistance(myPos, gameState.getAgentPosition(do)) for do in dangerousOpponents]) if dangerousOpponents else 10
-      dangerousOpponentsStates = [gameState.getAgentState(do) for do in dangerousOpponents]
-
-      if gameState.getAgentPosition(self.index)==gameState.getInitialAgentPosition(self.index):
-          features['distanceToEnemy'] = -1000
-      elif minEnemyDistance > 1:
-          features['distanceToEnemy'] = -50
-      else:
-          features['distanceToEnemy'] = -1 / minEnemyDistance
-
-      return features
-
-    def getWeights(self, gameState, action):
-      return {'successorScore': 100, 'distanceToFood': 1, 'distanceToEnemy': 5}
-
-
-class ReturningAgent(OffendingAgent):
-    def getOurBorderPos(self, gameState):
-        wallMatrix = gameState.getWalls()
-        height = gameState.data.layout.height
-        width = gameState.data.layout.width
-
-        border_red = []
-        border_blue = []
-        border_red_x = width // 2 - 1
-        border_blue_x = border_red_x + 1
-
-        for h in range(height):
-            if not wallMatrix[border_red_x][h]:
-                border_red.append((border_red_x, h))
-            if not wallMatrix[border_blue_x][h]:
-                border_blue.append((border_blue_x, h))
-
-        return border_red if gameState.isOnRedTeam(self.index) else border_blue
-
-    def getFeatures(self, gameState, action):
-      features = util.Counter()
-      borderList = self.getOurBorderPos(gameState)
-
-      myPos = gameState.getAgentState(self.index).getPosition()
-      minBorderDistance = min([self.getMazeDistance(myPos, bPos) for bPos in borderList])
-      features['distanceToBorder'] = -minBorderDistance if minBorderDistance > 0 else 1000
-
-      # print(minBorderDistance)
-      opponents = self.getOpponents(gameState)
-      dangerousOpponents = [o for o in opponents if self.checkDangerOfAgent(gameState, o)]    # "위험한" 적
-      minEnemyDistance = min([self.getMazeDistance(myPos, gameState.getAgentPosition(do)) for do in dangerousOpponents]) if dangerousOpponents else 10
-      dangerousOpponentsStates = [gameState.getAgentState(do) for do in dangerousOpponents]
-
-      if gameState.getAgentPosition(self.index)==gameState.getInitialAgentPosition(self.index):
-          features['distanceToEnemy'] = -1000
-      elif minEnemyDistance > 1:
-          features['distanceToEnemy'] = -50
-      else:
-          features['distanceToEnemy'] = -1 / minEnemyDistance
-
-      return features
-
-    def getWeights(self, gameState, action):
-      return {'distanceToBorder': 2, 'distanceToEnemy': 1}
